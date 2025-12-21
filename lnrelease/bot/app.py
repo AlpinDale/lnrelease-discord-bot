@@ -13,7 +13,7 @@ import lnrelease.parse as parse
 import lnrelease.scrape as scrape
 from lnrelease.bot.releases import get_digital_releases_for_date
 from lnrelease.bot.storage import BotStorage
-from lnrelease.bot.ui import ReleaseView
+from lnrelease.bot.ui import PaginatedReleasesView, ReleaseView
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -262,30 +262,12 @@ async def get_releases(
         all_releases.sort(key=lambda r: (r.date, r.publisher, r.name))
 
         date_range_str = f"{start_date} to {end_date}" if end_date and end != start else start_date
-        embed = discord.Embed(
-            title=f"Releases for {date_range_str}",
-            description=f"Found {len(all_releases)} digital release(s)",
-            color=discord.Color.blue(),
-        )
+        title = f"Releases for {date_range_str}"
 
-        for release in all_releases[:25]:
-            value = (
-                f"**Date:** {release.date.isoformat()}\n"
-                f"**Publisher:** {release.publisher}\n"
-                f"**Volume:** {release.volume}\n"
-                f"**Format:** {release.format.name}\n"
-                f"[Link]({release.link})"
-            )
-            embed.add_field(
-                name=release.name,
-                value=value,
-                inline=False,
-            )
-
-        if len(all_releases) > 25:
-            embed.set_footer(text=f"Showing 25 of {len(all_releases)} releases")
-
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        view = PaginatedReleasesView(all_releases, title, per_page=10)
+        embed = view.get_embed()
+        message = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        view.message = message
     except Exception as e:
         logger.error(f"Error in get_releases: {e}", exc_info=True)
         await interaction.followup.send(f"Error fetching releases: {e}", ephemeral=True)
