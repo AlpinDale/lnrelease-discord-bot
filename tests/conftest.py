@@ -1,6 +1,6 @@
-import pytest
 import datetime
-from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture

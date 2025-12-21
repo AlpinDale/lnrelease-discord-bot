@@ -77,7 +77,7 @@ def parse(session: Session, link: str, links: dict[str, str]) -> None | tuple[Se
     series = Series("", series_title)
     info = set()
     publisher = imprint if imprint == "J-Novel Club" else NAME
-    for format, detail in zip(formats, details):
+    for format, detail in zip(formats, details, strict=False):
         if format not in FORMATS:
             continue
 
@@ -132,16 +132,16 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                     for inf in res[1]:
                         isbns[inf.isbn] = inf
                         date = inf.date
-                        l = Key(inf.isbn, date)
-                        pages.discard(l)
-                        pages.add(l)
+                        key = Key(inf.isbn, date)
+                        pages.discard(key)
+                        pages.add(key)
                         skip.add(inf.isbn)
                 elif isbn not in isbns:
-                    l = Key(isbn, datetime.date.today())
-                    pages.discard(l)
-                    pages.add(l)
+                    key = Key(isbn, datetime.date.today())
+                    pages.discard(key)
+                    pages.add(key)
             except Exception as e:
-                warnings.warn(f"({link}): {e}", RuntimeWarning)
+                warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
 
     pages.save()
     return series, set(isbns.values())

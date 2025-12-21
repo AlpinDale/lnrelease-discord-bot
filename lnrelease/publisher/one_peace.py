@@ -1,8 +1,5 @@
-import re
 from collections import Counter
 from itertools import chain
-
-from typing import cast
 
 from lnrelease.utils import EPOCH, Book, Format, Info, Series
 

@@ -3,7 +3,6 @@ import re
 from collections import defaultdict
 from itertools import chain, pairwise
 from math import prod
-
 from typing import cast
 
 from lnrelease.utils import Book, Format, Info, Series

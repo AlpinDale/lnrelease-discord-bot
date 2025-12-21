@@ -3,7 +3,7 @@ import random
 import re
 import warnings
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from threading import Lock
 from time import perf_counter_ns, sleep, time
 from typing import Self
@@ -97,7 +97,7 @@ class Limiter:
         self.lock.acquire()
         delay = random.uniform(*DELAYS.get(self.netloc, (0, 0)))
         if not delay:
-            warnings.warn(f"No delay for {self.netloc}", RuntimeWarning)
+            warnings.warn(f"No delay for {self.netloc}", RuntimeWarning, stacklevel=2)
             return self
         stats = REQUEST_STATS.get(self.netloc, Stats())
         stats.begin()
@@ -132,8 +132,10 @@ class Session(requests.Session):
         self,
         total: int = 5,
         backoff_factor: float = 2,
-        status_forcelist: set[int] = {429, 500, 502, 503, 504},
+        status_forcelist: set[int] = None,
     ) -> None:
+        if status_forcelist is None:
+            status_forcelist = {429, 500, 502, 503, 504}
         retry = Retry(
             total=total,
             backoff_factor=backoff_factor,
@@ -163,7 +165,7 @@ class Session(requests.Session):
             if page.status_code == 301:
                 link = urljoin(page.url, page.headers.get("Location"))
         except requests.exceptions.RequestException as e:
-            warnings.warn(f"Error resolving ({link}): {e}", RuntimeWarning)
+            warnings.warn(f"Error resolving ({link}): {e}", RuntimeWarning, stacklevel=2)
         finally:
             self.set_retry()
         return link
@@ -183,9 +185,7 @@ class Session(requests.Session):
                     jsn = page.json()
                     if not jsn["task"]["success"]:
                         return None
-                    delta = datetime.fromisoformat(jsn["task"]["timeEnd"]) - datetime.now(
-                        timezone.utc
-                    )
+                    delta = datetime.fromisoformat(jsn["task"]["timeEnd"]) - datetime.now(UTC)
                     sleep(max(0, delta.total_seconds()))
                     response = jsn["lists"]["hashes"][0]
                     res = self.try_get(f"{CF_API}/responses/{response}", retries=2, **kwargs)
@@ -194,7 +194,7 @@ class Session(requests.Session):
                         return res
                 sleep(10)
         except Exception as e:
-            warnings.warn(f"Error reading scan ({url}|{uuid}): {e}", RuntimeWarning)
+            warnings.warn(f"Error reading scan ({url}|{uuid}): {e}", RuntimeWarning, stacklevel=2)
         return None
 
     def cf_search(self, url: str, refresh: int = -1, **kwargs) -> requests.Response | None:
@@ -203,7 +203,7 @@ class Session(requests.Session):
 
         kwargs.setdefault("headers", {}).update(CF_HEADERS)
         delta = 30 if refresh == -1 else refresh + random.randrange(refresh * 2)
-        cutoff = datetime.now(timezone.utc) - timedelta(days=delta)
+        cutoff = datetime.now(UTC) - timedelta(days=delta)
         query = f'page.url:"{url}" AND date:>{cutoff.strftime("%Y-%m-%d")}'
         if page := self.try_get(f"{CF_API}/search", retries=2, params={"q": query}, **kwargs):
             results: list[dict] = page.json()["results"]
@@ -225,7 +225,7 @@ class Session(requests.Session):
                     try:
                         page = self.post(f"{CF_API}/scan", json={"url": url}, **kwargs)
                     except requests.exceptions.RequestException as e:
-                        warnings.warn(f"Error scanning ({url}): {e}", RuntimeWarning)
+                        warnings.warn(f"Error scanning ({url}): {e}", RuntimeWarning, stacklevel=2)
                     sleep(20)
                 if page:
                     res = self.cf_result(url, page.json()["uuid"], **kwargs)
@@ -236,7 +236,11 @@ class Session(requests.Session):
                     and page.status_code not in ("409", "429")
                     and page.json()["errors"][-1]["status"] != 409
                 ):
-                    warnings.warn(f"Scan errors ({url}): {page.json()['errors']}", RuntimeWarning)
+                    warnings.warn(
+                        f"Scan errors ({url}): {page.json()['errors']}",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
                 with limiter("api.cloudflare.com"):
                     sleep(60)
         return self.cf_search(url, **kwargs)
@@ -245,7 +249,7 @@ class Session(requests.Session):
         return self.cf_search(url, refresh, **kwargs) or self.cf_create(url, **kwargs)
 
     def ia_cache(self, url: str, refresh: int = -1, **kwargs) -> requests.Response | None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         link = f"https://web.archive.org/web/{now.strftime('%Y%m%d%H%M%S')}/{url}"
         page = self.try_get(link, retries=2, **kwargs)
         if refresh == -1:
@@ -255,9 +259,9 @@ class Session(requests.Session):
             if match:
                 time = datetime.strptime(match.group("time") + "Z", "%Y%m%d%H%M%S%z")
             else:
-                time = datetime(1, 1, 1, tzinfo=timezone.utc)
+                time = datetime(1, 1, 1, tzinfo=UTC)
         else:
-            time = datetime(1, 1, 1, tzinfo=timezone.utc)
+            time = datetime(1, 1, 1, tzinfo=UTC)
         cutoff = now - timedelta(days=refresh + random.randrange(max(4, refresh * 4)))
         if time < cutoff:
             link = f"http://web.archive.org/save/{url}"
@@ -305,6 +309,6 @@ class Session(requests.Session):
             self.set_retry()
 
         if page and page.status_code not in (200, 404):
-            warnings.warn(f"Status code {page.status_code}: {url}", RuntimeWarning)
+            warnings.warn(f"Status code {page.status_code}: {url}", RuntimeWarning, stacklevel=2)
 
         return page

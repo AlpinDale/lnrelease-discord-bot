@@ -1,5 +1,7 @@
-import pytest
 import datetime
+
+import pytest
+
 from lnrelease.bot.storage import BotStorage
 
 

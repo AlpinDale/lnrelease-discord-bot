@@ -41,7 +41,7 @@ def read(
         if norm := store.normalise(session, url, resolve=True):
             urls.append([norm, url])
         elif norm is None:
-            warnings.warn(f"{url} normalise failed", RuntimeWarning)
+            warnings.warn(f"{url} normalise failed", RuntimeWarning, stacklevel=2)
 
     alts = []
     force = True
@@ -90,7 +90,7 @@ def parse(session: Session, link: str, skip: set[str]) -> tuple[Series, set[Info
                 continue
             info |= read(session, page.json(), series, f"{path}/{vol}", volumes, skip)[1]
         except Exception as e:
-            warnings.warn(f"({link}): {e}", RuntimeWarning)
+            warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
 
     return series, info
 
@@ -127,11 +127,11 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                     for i in inf:
                         if i.source == NAME:
                             continue
-                        l = Key(i.link, i.date)
-                        pages.discard(l)
-                        pages.add(l)
+                        key = Key(i.link, i.date)
+                        pages.discard(key)
+                        pages.add(key)
             except Exception as e:
-                warnings.warn(f"({link}): {e}", RuntimeWarning)
+                warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
 
     pages.save()
     return series, info

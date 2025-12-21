@@ -93,9 +93,9 @@ def equal(a: str, b: str) -> bool:
         try:
             return store.equal(a, b)
         except Exception as e:
-            warnings.warn(f"{a}, {b} equal error: {e}", RuntimeWarning)
+            warnings.warn(f"{a}, {b} equal error: {e}", RuntimeWarning, stacklevel=2)
     elif neta not in IGNORE:
-        warnings.warn(f"equal on unknown urls: {a}, {b}", RuntimeWarning)
+        warnings.warn(f"equal on unknown urls: {a}, {b}", RuntimeWarning, stacklevel=2)
     return False
 
 
@@ -105,9 +105,9 @@ def hash_link(link: str) -> int:
         try:
             return store.hash_link(link)
         except Exception as e:
-            warnings.warn(f"{link} hash error: {e}", RuntimeWarning)
+            warnings.warn(f"{link} hash error: {e}", RuntimeWarning, stacklevel=2)
     elif netloc not in IGNORE:
-        warnings.warn(f"hash on unknown url: {link}", RuntimeWarning)
+        warnings.warn(f"hash on unknown url: {link}", RuntimeWarning, stacklevel=2)
     return hash(link)
 
 
@@ -161,7 +161,7 @@ def parse(
     elif netloc in PROCESSED:
         return None
     elif netloc not in IGNORE:
-        warnings.warn(f"{netloc} parse not implemented", RuntimeWarning)
+        warnings.warn(f"{netloc} parse not implemented", RuntimeWarning, stacklevel=2)
         return None
 
     try:
@@ -176,5 +176,5 @@ def parse(
             isbn=isbn,
         )
     except Exception as e:
-        warnings.warn(f"{links}: {e}", RuntimeWarning)
+        warnings.warn(f"{links}: {e}", RuntimeWarning, stacklevel=2)
     return None

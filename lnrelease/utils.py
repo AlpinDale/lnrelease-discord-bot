@@ -84,7 +84,7 @@ class Format(StrEnum):
             return cls.DIGITAL
         elif s in AUDIOBOOK:
             return cls.AUDIOBOOK
-        warnings.warn(f"Unknown format: {s}", RuntimeWarning)
+        warnings.warn(f"Unknown format: {s}", RuntimeWarning, stacklevel=2)
         return cls.NONE
 
     def is_digital(self) -> bool:
@@ -221,8 +221,7 @@ class Info:
         yield self.isbn
         yield self.date
         self.alts.sort()
-        for alt in self.alts:
-            yield alt
+        yield from self.alts
 
 
 @dataclass
@@ -348,7 +347,7 @@ class Table(set[Key | Info | Book | Series]):
         self.file = file
         self.cls = cls
         if file.is_file():
-            with open(self.file, "r", encoding="utf-8", newline="") as f:
+            with open(self.file, encoding="utf-8", newline="") as f:
                 for line in csv.reader(f):
                     self.add(self.cls.from_db(*line))
 

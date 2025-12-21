@@ -2,11 +2,9 @@ import datetime
 import hashlib
 from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Iterable
 
-from lnrelease.utils import FORMATS, Book, Format, Release, Table
 from lnrelease.parse import BOOKS
+from lnrelease.utils import FORMATS, Book, Format, Release, Table
 
 
 @dataclass

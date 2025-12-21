@@ -4,7 +4,7 @@ import warnings
 from collections import defaultdict
 from pathlib import Path
 from random import random
-from urllib.parse import urljoin, urlparse, quote
+from urllib.parse import quote, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -57,7 +57,7 @@ def parse(session: Session, series: Series, link: str, skip: set[str]) -> set[In
             url = a.get("href")
             norm = store.normalise(session, url, resolve=True)
             if norm is None:
-                warnings.warn(f"{url} normalise failed", RuntimeWarning)
+                warnings.warn(f"{url} normalise failed", RuntimeWarning, stacklevel=2)
                 continue
 
             if urlparse(norm).netloc in store.PROCESSED:
@@ -84,11 +84,11 @@ def parse(session: Session, series: Series, link: str, skip: set[str]) -> set[In
                     alts[Format.PHYSICAL].append(norm)
 
         for format in formats:
-            l = f"{link}#:~:text={quote(booktitle)}"
+            link_url = f"{link}#:~:text={quote(booktitle)}"
             f = format.name.title()
             i = isbn if format == Format.PHYSICAL else ""
             a = alts[format]
-            info.add(Info(series.key, l, NAME, NAME, title, index, f, i, EPOCH, a))
+            info.add(Info(series.key, link_url, NAME, NAME, title, index, f, i, EPOCH, a))
 
     return info
 
@@ -125,14 +125,14 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                     series.add(serie)
                     info -= {i for i in info if i.serieskey == serie.key} | inf
                     info |= inf
-                    for inf in inf:
-                        if inf.source == NAME:
+                    for info_item in inf:
+                        if info_item.source == NAME:
                             continue
-                        l = Key(inf.link, inf.date)
-                        pages.discard(l)
-                        pages.add(l)
+                        key = Key(info_item.link, info_item.date)
+                        pages.discard(key)
+                        pages.add(key)
             except Exception as e:
-                warnings.warn(f"({link}): {e}", RuntimeWarning)
+                warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
 
     pages.save()
     return series, info

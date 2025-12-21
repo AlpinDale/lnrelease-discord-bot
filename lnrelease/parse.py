@@ -6,7 +6,7 @@ from operator import attrgetter
 from pathlib import Path
 
 import lnrelease.publisher as publisher
-from lnrelease.scrape import INFO, SERIES, DATA_DIR
+from lnrelease.scrape import DATA_DIR, INFO, SERIES
 from lnrelease.utils import (
     FORMATS,
     PRIMARY,
@@ -25,7 +25,6 @@ for file in PUBLISHER_DIR.glob("*.py"):
         module = importlib.import_module(f"lnrelease.publisher.{file.stem}")
         PUBLISHERS[module.NAME] = module
 
-from lnrelease.scrape import DATA_DIR
 
 BOOKS = DATA_DIR / "books.csv"
 
@@ -57,7 +56,7 @@ def main() -> None:
             module = PUBLISHERS[pub]
         else:
             module = publisher
-            warnings.warn(f"Unknown publisher: {pub}; {serieskey}", RuntimeWarning)
+            warnings.warn(f"Unknown publisher: {pub}; {serieskey}", RuntimeWarning, stacklevel=2)
         inf_dict: defaultdict[str, list[Info]] = defaultdict(list)
         for i in group:
             inf_dict[i.format].append(i)

@@ -158,11 +158,11 @@ def parse(
             date = date or match.group("date")
     if not date:
         if b"We don't know when or if this item will be back in stock." not in page.content:
-            warnings.warn(f"No date found: {links[0]}")
+            warnings.warn(f"No date found: {links[0]}", stacklevel=2)
         return None
     date = strpdate(date)
     if not date:
-        warnings.warn(f"Error parsing date: {date} ({links[0]})")
+        warnings.warn(f"Error parsing date: {date} ({links[0]})", stacklevel=2)
         return None
 
     info = utils.Info(series.key, links[0], NAME, publisher, title, index, format, isbn, date)

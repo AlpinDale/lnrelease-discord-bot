@@ -66,7 +66,7 @@ def get_publisher(pub: str) -> str | None:
         pub = PUBLISHERS[pub]
         return pub if pub else None
     except KeyError:
-        warnings.warn(f"Unknown publisher: {pub}", RuntimeWarning)
+        warnings.warn(f"Unknown publisher: {pub}", RuntimeWarning, stacklevel=2)
         return None
 
 
@@ -128,9 +128,9 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                     series.add(serie)
                     isbns[inf.isbn] = inf
 
-            for l in jsn["links"]:
-                if l["rel"] == "next":
-                    link = l["href"]
+            for link_item in jsn["links"]:
+                if link_item["rel"] == "next":
+                    link = link_item["href"]
                     break
             else:
                 link = ""

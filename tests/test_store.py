@@ -1,4 +1,3 @@
-import pytest
 from lnrelease.store import amazon, apple, book_walker, viz, yen_press
 
 

@@ -83,7 +83,7 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                         info -= {i for i in info if i.serieskey == s.key} | inf
                         info |= inf
                 except Exception as e:
-                    warnings.warn(f"{serie['slug']}: {e}", RuntimeWarning)
+                    warnings.warn(f"{serie['slug']}: {e}", RuntimeWarning, stacklevel=2)
 
             if jsn["pagination"]["lastPage"]:
                 break

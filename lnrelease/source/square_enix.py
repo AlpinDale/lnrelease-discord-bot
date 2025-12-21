@@ -25,7 +25,7 @@ def get_format(s: str) -> str | None:
         case "Chapters (Digital)":
             return None
         case _:
-            warnings.warn(f"Unknown SE format: {s}", RuntimeWarning)
+            warnings.warn(f"Unknown SE format: {s}", RuntimeWarning, stacklevel=2)
             return None
 
 
@@ -76,6 +76,6 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                         info.update(inf)
                         index += 1
             except Exception as e:
-                warnings.warn(f"({link}): {e}", RuntimeWarning)
+                warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
 
     return series, info

@@ -50,7 +50,7 @@ def get_publisher(pub: str) -> str | None:
         pub = PUBLISHERS[pub]
         return pub
     except KeyError:
-        warnings.warn(f"Unknown publisher: {pub}", RuntimeWarning)
+        warnings.warn(f"Unknown publisher: {pub}", RuntimeWarning, stacklevel=2)
         return None
 
 
@@ -156,11 +156,11 @@ def scrape_cat(
                     date = res[1].date
                 else:
                     date = datetime.date.today()
-                l = Key(link, date)
-                pages.discard(l)
-                pages.add(l)
+                key = Key(link, date)
+                pages.discard(key)
+                pages.add(key)
             except Exception as e:
-                warnings.warn(f"({link}): {e}", RuntimeWarning)
+                warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
 
         pager = soup.select_one(".pager-area ul li:last-child")
         pager_class = pager.get("class") if pager else None

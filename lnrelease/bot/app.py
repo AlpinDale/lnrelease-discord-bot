@@ -4,15 +4,16 @@ import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
+
 import discord
 from discord import app_commands
 from discord.ext import tasks
 
-from lnrelease.bot.storage import BotStorage
-from lnrelease.bot.releases import get_digital_releases_for_date
-from lnrelease.bot.ui import ReleaseView
-import lnrelease.scrape as scrape
 import lnrelease.parse as parse
+import lnrelease.scrape as scrape
+from lnrelease.bot.releases import get_digital_releases_for_date
+from lnrelease.bot.storage import BotStorage
+from lnrelease.bot.ui import ReleaseView
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

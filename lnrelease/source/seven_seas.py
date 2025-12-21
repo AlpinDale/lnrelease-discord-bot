@@ -62,7 +62,7 @@ def parse(session: Session, link: str, series: Series, refresh: int) -> set[Info
                 if format in NON_FORMATS:
                     continue
                 if format not in FORMATS:
-                    warnings.warn(f"Unknown SS format: {format}", RuntimeWarning)
+                    warnings.warn(f"Unknown SS format: {format}", RuntimeWarning, stacklevel=2)
                     continue
         if not audio and header == "AUDIOBOOKS":
             if not info:
@@ -183,7 +183,7 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
         soup = BeautifulSoup(page.content, "lxml")
         lst = soup.select("tr#volumes > td:first-child > a")
         if not lst:
-            warnings.warn(f"No series found: {page.url}", RuntimeWarning)
+            warnings.warn(f"No series found: {page.url}", RuntimeWarning, stacklevel=2)
         for a in lst:
             href = a.get("href")
             if not href or not isinstance(href, str):
@@ -221,5 +221,5 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                     info -= {i for i in info if i in inf or i.isbn in isbns}
                     info |= inf
             except Exception as e:
-                warnings.warn(f"({link}): {e}", RuntimeWarning)
+                warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
     return series, info

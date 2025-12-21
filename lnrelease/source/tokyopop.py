@@ -84,7 +84,7 @@ def scrape_full(
                         info -= res[1]
                         info |= res[1]
                 except Exception as e:
-                    warnings.warn(f"{isbn}: {e}", RuntimeWarning)
+                    warnings.warn(f"{isbn}: {e}", RuntimeWarning, stacklevel=2)
 
             if not soup.select_one(".pagination > .next") or not results:
                 break

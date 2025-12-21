@@ -1,16 +1,16 @@
-import pytest
 import datetime
+
+from lnrelease.bot.releases import ReleaseInfo, generate_release_id
 from lnrelease.utils import (
-    Format,
-    clean_str,
-    volume_lt,
-    Series,
-    Info,
     Book,
+    Format,
+    Info,
     Release,
+    Series,
+    clean_str,
     find_series,
+    volume_lt,
 )
-from lnrelease.bot.releases import generate_release_id, ReleaseInfo
 
 
 class TestFormat:

@@ -1,7 +1,7 @@
-import pytest
 import datetime
-from lnrelease.publisher import standard, omnibus, guess, short, PARSE, OMNIBUS
-from lnrelease.utils import Series, Info, Book
+
+from lnrelease.publisher import OMNIBUS, PARSE, guess, omnibus, short, standard
+from lnrelease.utils import Info, Series
 
 
 class TestStandard:

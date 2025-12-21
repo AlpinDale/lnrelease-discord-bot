@@ -1,7 +1,7 @@
-import aiosqlite
 import datetime
-from datetime import timezone
 from pathlib import Path
+
+import aiosqlite
 
 
 class BotStorage:
@@ -86,7 +86,7 @@ class BotStorage:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
-                INSERT INTO release_state 
+                INSERT INTO release_state
                 (guild_id, release_id, release_date, title, publisher, volume, link, status, sent_message_id, sent_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'sent', ?, ?)
                 ON CONFLICT(guild_id, release_id) DO UPDATE SET
@@ -102,7 +102,7 @@ class BotStorage:
                     volume,
                     link,
                     message_id,
-                    datetime.datetime.now(timezone.utc).isoformat(),
+                    datetime.datetime.now(datetime.UTC).isoformat(),
                 ),
             )
             await db.commit()

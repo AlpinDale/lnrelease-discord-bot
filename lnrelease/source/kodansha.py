@@ -100,6 +100,6 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                         info -= inf
                         info |= inf
                     except Exception as e:
-                        warnings.warn(f"({link}): {e}", RuntimeWarning)
+                        warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
 
     return series, info

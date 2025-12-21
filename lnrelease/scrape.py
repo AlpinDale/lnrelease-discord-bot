@@ -65,7 +65,9 @@ def main() -> None:
                 info.save()
                 sources[futures[future]] = inf
             except Exception as e:
-                warnings.warn(f"Error scraping {futures[future]}: {e}", RuntimeWarning)
+                warnings.warn(
+                    f"Error scraping {futures[future]}: {e}", RuntimeWarning, stacklevel=2
+                )
             else:
                 print(f"{futures[future]} done ({time() - start:.2f}s)", flush=True)
     except TimeoutError:

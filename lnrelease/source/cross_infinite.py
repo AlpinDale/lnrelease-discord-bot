@@ -30,7 +30,7 @@ def get_format(s: str) -> str:
         ):
             return "Digital"
         case _:
-            warnings.warn(f"Unknown CIW format: {s}", RuntimeWarning)
+            warnings.warn(f"Unknown CIW format: {s}", RuntimeWarning, stacklevel=2)
             return "Digital"
 
 
@@ -68,7 +68,7 @@ def parse(session: Session, link: str, skip: set[str]) -> tuple[Series, set[Info
             if norm := store.normalise(session, url, resolve=True):
                 formats[format].setdefault(norm, [norm]).append(url)
             elif norm is None:
-                warnings.warn(f"{url} normalise failed", RuntimeWarning)
+                warnings.warn(f"{url} normalise failed", RuntimeWarning, stacklevel=2)
 
         for format, urls in formats.items():
             alts = []
@@ -153,16 +153,16 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                     for inf in res[1]:
                         key = inf.link, inf.format
                         if inf.source != NAME:
-                            l = Key(inf.link, inf.date)
-                            pages.discard(l)
-                            pages.add(l)
+                            key = Key(inf.link, inf.date)
+                            pages.discard(key)
+                            pages.add(key)
                         elif key in items:
                             inf.isbn = items[key].isbn
                             inf.date = items[key].date
                         items[key] = inf
 
             except Exception as e:
-                warnings.warn(f"({link}): {e}", RuntimeWarning)
+                warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
 
         page = session.get("https://crossinfworld.com/Calendar.html")
         if not page:
@@ -182,7 +182,7 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                 items[key].isbn = isbn
                 items[key].date = date
             else:
-                warnings.warn(f"{title} ({format}) not found: {link}", RuntimeWarning)
+                warnings.warn(f"{title} ({format}) not found: {link}", RuntimeWarning, stacklevel=2)
                 serie = find_series(title, series) or Series("", title)
                 series.add(serie)
                 items[key] = Info(serie.key, link, NAME, NAME, title, 0, format, isbn, date)

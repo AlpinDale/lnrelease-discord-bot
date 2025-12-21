@@ -100,11 +100,11 @@ def scrape_full(
                         date = res[2]
                     else:
                         date = datetime.date.today()
-                    l = Key(link, date)
-                    pages.discard(l)
-                    pages.add(l)
+                    key = Key(link, date)
+                    pages.discard(key)
+                    pages.add(key)
                 except Exception as e:
-                    warnings.warn(f"({link}): {e}", RuntimeWarning)
+                    warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
 
             if not results:
                 break

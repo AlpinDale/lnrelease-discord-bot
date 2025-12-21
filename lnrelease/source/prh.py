@@ -41,10 +41,10 @@ def scrape_full(
                             format = f
                             break
                     else:
-                        warnings.warn(f"Unknown PRH format: {format}", RuntimeWarning)
+                        warnings.warn(f"Unknown PRH format: {format}", RuntimeWarning, stacklevel=2)
                         continue
                 if language := variant["language"] != "E":
-                    warnings.warn(f"Non-E PRH language: {language}", RuntimeWarning)
+                    warnings.warn(f"Non-E PRH language: {language}", RuntimeWarning, stacklevel=2)
                     continue
 
                 inf = Info(serie.key, url, NAME, "Kodansha", title, 0, format, isbn, date)
