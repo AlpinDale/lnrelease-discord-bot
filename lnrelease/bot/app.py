@@ -217,6 +217,56 @@ async def uncollected(interaction: discord.Interaction, date: str | None = None)
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
+@bot.tree.command(name="releases_for_date", description="Show releases for a specific date")
+@app_commands.describe(date="Date in YYYY-MM-DD format")
+async def releases_for_date(interaction: discord.Interaction, date: str):
+    try:
+        target_date = datetime.date.fromisoformat(date)
+    except ValueError:
+        await interaction.response.send_message(
+            "Invalid date format. Please use YYYY-MM-DD", ephemeral=True
+        )
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        releases = get_digital_releases_for_date(target_date)
+
+        if not releases:
+            await interaction.followup.send(
+                f"No digital releases found for {date}.", ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(
+            title=f"Releases for {date}",
+            description=f"Found {len(releases)} digital release(s)",
+            color=discord.Color.blue(),
+        )
+
+        for release in releases[:25]:
+            value = (
+                f"**Publisher:** {release.publisher}\n"
+                f"**Volume:** {release.volume}\n"
+                f"**Format:** {release.format.name}\n"
+                f"[Link]({release.link})"
+            )
+            embed.add_field(
+                name=release.name,
+                value=value,
+                inline=False,
+            )
+
+        if len(releases) > 25:
+            embed.set_footer(text=f"Showing 25 of {len(releases)} releases")
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+    except Exception as e:
+        logger.error(f"Error in releases_for_date: {e}", exc_info=True)
+        await interaction.followup.send(f"Error fetching releases: {e}", ephemeral=True)
+
+
 @bot.tree.command(name="resync_today", description="Resend today's releases (admin only)")
 @app_commands.default_permissions(administrator=True)
 async def resync_today(interaction: discord.Interaction):
