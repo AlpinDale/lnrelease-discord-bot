@@ -1,0 +1,258 @@
+import asyncio
+import datetime
+import logging
+import os
+import sys
+from concurrent.futures import ThreadPoolExecutor
+import discord
+from discord import app_commands
+from discord.ext import tasks
+
+from lnrelease.bot.storage import BotStorage
+from lnrelease.bot.releases import get_digital_releases_for_date
+from lnrelease.bot.ui import ReleaseView
+import lnrelease.scrape as scrape
+import lnrelease.parse as parse
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("lnrelease.bot")
+
+bot_instance = None
+
+
+class ReleaseBot(discord.Client):
+    def __init__(self):
+        intents = discord.Intents.default()
+        super().__init__(intents=intents)
+
+        self.tree = app_commands.CommandTree(self)
+        self.storage: BotStorage = None
+        self.executor = ThreadPoolExecutor(max_workers=2)
+
+        global bot_instance
+        bot_instance = self
+
+    async def setup_hook(self):
+        db_path = os.getenv("BOT_DB_PATH", "./data/bot.sqlite")
+        self.storage = BotStorage(db_path)
+        await self.storage.init_db()
+
+        logger.info("Registering commands...")
+        await self.tree.sync()
+        logger.info("Commands synced")
+
+        self.update_loop.start()
+
+    async def on_ready(self):
+        if self.user:
+            logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
+        else:
+            logger.info("Logged in (user not available)")
+        logger.info("------")
+
+    @tasks.loop(hours=8)
+    async def update_loop(self):
+        logger.info("Starting update cycle...")
+
+        try:
+            await asyncio.get_event_loop().run_in_executor(self.executor, self._run_scrapers)
+            logger.info("Scraping and parsing complete")
+
+            await self.post_todays_releases()
+
+        except Exception as e:
+            logger.error(f"Error in update loop: {e}", exc_info=True)
+
+    @update_loop.before_loop
+    async def before_update_loop(self):
+        await self.wait_until_ready()
+        logger.info("Running initial update...")
+        try:
+            await self.update_loop()
+        except Exception as e:
+            logger.error(f"Error in initial update: {e}", exc_info=True)
+
+    def _run_scrapers(self):
+        logger.info("Running scrape.main()...")
+        scrape.main()
+        logger.info("Running parse.main()...")
+        parse.main()
+
+    async def post_todays_releases(self):
+        configs = await self.storage.get_all_guild_configs()
+
+        for guild_id, channel_id, timezone in configs:
+            try:
+                await self.post_releases_for_guild(guild_id, channel_id, timezone)
+            except Exception as e:
+                logger.error(f"Error posting to guild {guild_id}: {e}", exc_info=True)
+
+    async def post_releases_for_guild(self, guild_id: int, channel_id: int, timezone: str):
+        import zoneinfo
+
+        tz = zoneinfo.ZoneInfo(timezone)
+        today = datetime.datetime.now(tz).date()
+
+        releases = get_digital_releases_for_date(today)
+
+        channel = self.get_channel(channel_id)
+        if not channel:
+            guild = self.get_guild(guild_id)
+            if guild:
+                channel = guild.get_channel(channel_id)
+
+        if not channel:
+            logger.warning(f"Channel {channel_id} not found for guild {guild_id}")
+            return
+
+        if not isinstance(channel, discord.TextChannel):
+            logger.warning(f"Channel {channel_id} is not a text channel")
+            return
+
+        for release in releases:
+            if await self.storage.is_release_sent(guild_id, release.release_id):
+                continue
+
+            embed = discord.Embed(
+                title=release.name,
+                url=release.link,
+                color=discord.Color.blue(),
+                timestamp=datetime.datetime.now(),
+            )
+            embed.add_field(name="Volume", value=release.volume, inline=True)
+            embed.add_field(name="Publisher", value=release.publisher, inline=True)
+            embed.add_field(
+                name="Release Date",
+                value=release.date.strftime("%B %d, %Y"),
+                inline=True,
+            )
+            embed.set_footer(text=f"Format: {release.format}")
+
+            view = ReleaseView(release.release_id)
+
+            try:
+                message = await channel.send(embed=embed, view=view)
+                await self.storage.add_release(
+                    guild_id,
+                    release.release_id,
+                    release.date,
+                    release.name,
+                    release.publisher,
+                    release.volume,
+                    release.link,
+                    message.id,
+                )
+                logger.info(f"Posted release {release.name} to guild {guild_id}")
+            except Exception as e:
+                logger.error(
+                    f"Error posting release {release.name} to guild {guild_id}: {e}",
+                    exc_info=True,
+                )
+
+
+bot = ReleaseBot()
+
+
+@bot.tree.command(name="set_channel", description="Set the channel for release notifications")
+@app_commands.describe(channel="The channel to send release notifications to")
+@app_commands.default_permissions(manage_guild=True)
+async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    if not interaction.guild_id:
+        await interaction.response.send_message(
+            "This command can only be used in a server.", ephemeral=True
+        )
+        return
+    timezone = os.getenv("BOT_TIMEZONE_DEFAULT", "UTC")
+    await bot.storage.set_channel(interaction.guild_id, channel.id, timezone)
+    await interaction.response.send_message(
+        f"Release notifications will be sent to {channel.mention}", ephemeral=True
+    )
+    logger.info(f"Guild {interaction.guild_id} set channel to {channel.id}")
+
+
+@bot.tree.command(name="uncollected", description="Show uncollected releases")
+@app_commands.describe(date="Filter by date (YYYY-MM-DD format, optional)")
+async def uncollected(interaction: discord.Interaction, date: str | None = None):
+    target_date = None
+    if date:
+        try:
+            target_date = datetime.date.fromisoformat(date)
+        except ValueError:
+            await interaction.response.send_message(
+                "Invalid date format. Please use YYYY-MM-DD", ephemeral=True
+            )
+            return
+
+    if not interaction.guild_id:
+        await interaction.response.send_message(
+            "This command can only be used in a server.", ephemeral=True
+        )
+        return
+
+    releases = await bot.storage.get_uncollected(interaction.guild_id, target_date)
+
+    if not releases:
+        date_msg = f" for {date}" if date else ""
+        await interaction.response.send_message(
+            f"No uncollected releases{date_msg}!", ephemeral=True
+        )
+        return
+
+    embed = discord.Embed(title="Uncollected Releases", color=discord.Color.orange())
+
+    for release in releases[:25]:
+        value = f"**Publisher:** {release['publisher']}\n**Volume:** {release['volume']}\n[Link]({release['link']})"
+        embed.add_field(
+            name=f"{release['release_date']} - {release['title']}",
+            value=value,
+            inline=False,
+        )
+
+    if len(releases) > 25:
+        embed.set_footer(text=f"Showing 25 of {len(releases)} uncollected releases")
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+@bot.tree.command(name="resync_today", description="Resend today's releases (admin only)")
+@app_commands.default_permissions(administrator=True)
+async def resync_today(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
+    if not interaction.guild_id:
+        await interaction.followup.send(
+            "This command can only be used in a server.", ephemeral=True
+        )
+        return
+
+    config = await bot.storage.get_guild_config(interaction.guild_id)
+    if not config:
+        await interaction.followup.send(
+            "No channel configured. Use /set_channel first.", ephemeral=True
+        )
+        return
+
+    channel_id, timezone = config
+
+    try:
+        await bot.post_releases_for_guild(interaction.guild_id, channel_id, timezone)
+        await interaction.followup.send("Today's releases have been resynced!", ephemeral=True)
+    except Exception as e:
+        logger.error(f"Error in resync_today: {e}", exc_info=True)
+        await interaction.followup.send(f"Error resyncing: {e}", ephemeral=True)
+
+
+def main():
+    token = os.getenv("DISCORD_TOKEN")
+    if not token:
+        logger.error("DISCORD_TOKEN environment variable not set")
+        sys.exit(1)
+
+    assert token is not None
+    bot.run(token, log_handler=None)
+
+
+if __name__ == "__main__":
+    main()

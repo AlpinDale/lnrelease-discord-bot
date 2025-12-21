@@ -1,0 +1,49 @@
+from typing import cast
+
+from lnrelease.utils import Book, Info, Series
+
+from . import NUMBER, check, copy, guess, omnibus, one, part, secondary, short, standard
+
+NAME = "Yen Press"
+
+
+def parse(
+    series: Series, info: dict[str, list[Info]], links: dict[str, list[Info]]
+) -> dict[str, list[Book]]:
+    books: dict[str, list[Book | None]] = {}
+    for format, lst in info.items():
+        # remove duplicates
+        seen = set()
+        for inf in lst.copy():
+            title = inf.title
+            if title in seen:
+                lst.remove(inf)
+            seen.add(title)
+        books[format] = [None] * len(lst)
+
+    main_info = cast(list[Info], max(info.values(), key=len))
+    main_books = cast(list[Book | None], max(books.values(), key=len))
+    size = len(main_info)
+
+    standard(series, info, books)
+    omnibus(series, info, books)
+    short(series, info, books)
+    todo = [i for i, book in enumerate(main_books) if not book]
+    if len(todo) == 0:
+        pass
+    elif all(
+        (" Volume " in main_info[i].title or " Vol. " in main_info[i].title)
+        and len(NUMBER.findall(main_info[i].title)) > 1
+        for i in todo
+    ):
+        part(series, info, books)
+    elif len(todo) < size - 1:
+        one(series, info, books)
+    else:
+        secondary(series, info, links, books)
+        short(series, info, books)
+        guess(series, info, books)
+
+    copy(series, info, books)
+    check(series, info, books)
+    return {k: [b for b in v if b is not None] for k, v in books.items()}

@@ -1,0 +1,107 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lnrelease-discord-bot"
+version = "0.1.0"
+description = "Discord bot that automatically posts daily alerts for licensed light novel digital releases"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "LN Release Discord Bot Contributors"}
+]
+keywords = ["discord", "bot", "light-novels", "releases", "scraping"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Communications :: Chat",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+]
+
+dependencies = [
+    "beautifulsoup4>=4.12.0",
+    "lxml>=4.9.0",
+    "requests>=2.31.0",
+    "discord.py>=2.3.0",
+    "aiosqlite>=0.19.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "ty>=0.0.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/AlpinDale/lnrelease-discord-bot"
+Documentation = "https://github.com/AlpinDale/lnrelease-discord-bot#readme"
+Repository = "https://github.com/AlpinDale/lnrelease-discord-bot"
+Issues = "https://github.com/AlpinDale/lnrelease-discord-bot/issues"
+
+[tool.setuptools]
+packages = ["lnrelease", "lnrelease.bot", "lnrelease.publisher", "lnrelease.source", "lnrelease.store"]
+
+[tool.setuptools.package-data]
+lnrelease = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+markers = [
+    "asyncio: mark test as async",
+    "slow: mark test as slow",
+]
+
+[tool.coverage.run]
+source = ["lnrelease"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == \"__main__\":",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.src]
+include = ["lnrelease", "tests"]
+exclude = [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "data",
+    "*.csv",
+]
+
+[[tool.ty.overrides]]
+include = ["tests/**"]
+[tool.ty.overrides.rules]
+possibly-unresolved-reference = "warn"
+

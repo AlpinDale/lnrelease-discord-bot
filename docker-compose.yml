@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: lnrelease-bot
+    restart: unless-stopped
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - BOT_DB_PATH=/app/data/bot.sqlite
+      - BOT_TIMEZONE_DEFAULT=${BOT_TIMEZONE_DEFAULT:-UTC}
+    volumes:
+      - ./data:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
