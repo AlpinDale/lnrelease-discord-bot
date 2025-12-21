@@ -45,10 +45,34 @@ A Discord bot that automatically posts daily alerts for licensed light novel dig
 
 2. **Invite Bot to Your Server**
    
-   Use this URL (replace `YOUR_CLIENT_ID` with your Application ID):
+   **Option A: Simple URL (recommended)**
    ```
-   https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=277025770496&scope=bot%20applications.commands
+   https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=19464&scope=bot%20applications.commands
    ```
+   
+   **Option B: If you need `guilds.join` scope (some setups require it)**
+   
+   First, add a redirect URI in Developer Portal:
+   - Go to OAuth2 → General
+   - Add redirect URI: `http://localhost`
+   - Save
+   
+   Then use this URL:
+   ```
+   https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=19464&scope=bot%20applications.commands%20guilds.join&redirect_uri=http%3A%2F%2Flocalhost
+   ```
+   
+   **Option C: Use URL Generator (easiest)**
+   - Go to OAuth2 → URL Generator
+   - Select scopes: `bot`, `applications.commands` (and `guilds.join` if needed)
+   - Select permissions: View Channels, Send Messages, Embed Links, Use Application Commands
+   - Copy the generated URL
+   
+   This grants the bot:
+   - View Channels
+   - Send Messages
+   - Embed Links
+   - Use Application Commands
 
 3. **Configure in Discord**
    
@@ -186,6 +210,33 @@ async def update_loop(self):
 ```
 
 ## Troubleshooting
+
+### Bot invite URL not working / "Opening Discord App" stuck
+1. **Open the URL in a web browser** (not the Discord desktop app)
+   - Copy the invite URL
+   - Open it in Chrome, Firefox, Safari, or Edge
+   - Make sure you're logged into Discord in the browser
+
+2. **Check Discord Developer Portal settings:**
+   - Go to https://discord.com/developers/applications
+   - Select your application
+   - Go to "OAuth2" → "General"
+   - **Redirect URIs**: For bot invites, you don't need any redirect URIs. If the portal requires at least one, add `http://localhost` (it won't be used for bot invites)
+   - Go to "Bot" tab and ensure:
+     - Bot is enabled (toggle at top)
+     - "Public Bot" can be disabled for personal use
+     - "Requires OAuth2 Code Grant" should be OFF
+
+3. **Try alternative URL formats:**
+   ```
+   https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=19464&scope=bot%20applications.commands
+   ```
+
+4. **Manual invite via Developer Portal:**
+   - Go to OAuth2 → URL Generator
+   - Select scopes: `bot`, `applications.commands`
+   - Select permissions: View Channels, Send Messages, Embed Links, Use Application Commands
+   - Copy the generated URL
 
 ### Bot not responding to commands
 - Verify the bot is online (green status in Discord)
