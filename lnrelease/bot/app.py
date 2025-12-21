@@ -217,36 +217,60 @@ async def uncollected(interaction: discord.Interaction, date: str | None = None)
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-@bot.tree.command(name="releases_for_date", description="Show releases for a specific date")
-@app_commands.describe(date="Date in YYYY-MM-DD format")
-async def releases_for_date(interaction: discord.Interaction, date: str):
+@bot.tree.command(name="get_releases", description="Show releases for a date or date range")
+@app_commands.describe(
+    start_date="Start date in YYYY-MM-DD format (required)",
+    end_date="End date in YYYY-MM-DD format (optional, defaults to start_date)",
+)
+async def get_releases(
+    interaction: discord.Interaction, start_date: str, end_date: str | None = None
+):
     try:
-        target_date = datetime.date.fromisoformat(date)
+        start = datetime.date.fromisoformat(start_date)
+        end = datetime.date.fromisoformat(end_date) if end_date else start
     except ValueError:
         await interaction.response.send_message(
             "Invalid date format. Please use YYYY-MM-DD", ephemeral=True
         )
         return
 
+    if end < start:
+        await interaction.response.send_message(
+            "End date must be after or equal to start date.", ephemeral=True
+        )
+        return
+
     await interaction.response.defer(ephemeral=True)
 
     try:
-        releases = get_digital_releases_for_date(target_date)
+        all_releases = []
+        current_date = start
+        while current_date <= end:
+            releases = get_digital_releases_for_date(current_date)
+            all_releases.extend(releases)
+            current_date += datetime.timedelta(days=1)
 
-        if not releases:
+        if not all_releases:
+            date_range_str = (
+                f"{start_date} to {end_date}" if end_date and end != start else start_date
+            )
             await interaction.followup.send(
-                f"No digital releases found for {date}.", ephemeral=True
+                f"No digital releases found for {date_range_str}.", ephemeral=True
             )
             return
 
+        all_releases.sort(key=lambda r: (r.date, r.publisher, r.name))
+
+        date_range_str = f"{start_date} to {end_date}" if end_date and end != start else start_date
         embed = discord.Embed(
-            title=f"Releases for {date}",
-            description=f"Found {len(releases)} digital release(s)",
+            title=f"Releases for {date_range_str}",
+            description=f"Found {len(all_releases)} digital release(s)",
             color=discord.Color.blue(),
         )
 
-        for release in releases[:25]:
+        for release in all_releases[:25]:
             value = (
+                f"**Date:** {release.date.isoformat()}\n"
                 f"**Publisher:** {release.publisher}\n"
                 f"**Volume:** {release.volume}\n"
                 f"**Format:** {release.format.name}\n"
@@ -258,12 +282,12 @@ async def releases_for_date(interaction: discord.Interaction, date: str):
                 inline=False,
             )
 
-        if len(releases) > 25:
-            embed.set_footer(text=f"Showing 25 of {len(releases)} releases")
+        if len(all_releases) > 25:
+            embed.set_footer(text=f"Showing 25 of {len(all_releases)} releases")
 
         await interaction.followup.send(embed=embed, ephemeral=True)
     except Exception as e:
-        logger.error(f"Error in releases_for_date: {e}", exc_info=True)
+        logger.error(f"Error in get_releases: {e}", exc_info=True)
         await interaction.followup.send(f"Error fetching releases: {e}", ephemeral=True)
 
 

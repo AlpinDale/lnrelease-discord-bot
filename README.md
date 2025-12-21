@@ -87,7 +87,7 @@ A Discord bot that automatically posts daily alerts for licensed light novel dig
 |---------|-------------|-------------|
 | `/set_channel #channel` | Set the channel for release notifications | Manage Server |
 | `/uncollected [date]` | Show uncollected releases (ephemeral) | None |
-| `/releases_for_date date:YYYY-MM-DD` | Show all releases for a specific date | None |
+| `/get_releases start_date:YYYY-MM-DD [end_date:YYYY-MM-DD]` | Show all releases for a date or date range | None |
 | `/resync_today` | Manually trigger today's releases | Administrator |
 
 ### Usage Examples
@@ -109,7 +109,12 @@ A Discord bot that automatically posts daily alerts for licensed light novel dig
 
 **View all releases for a specific date:**
 ```
-/releases_for_date date:2024-12-25
+/get_releases start_date:2024-12-25
+```
+
+**View all releases for a date range:**
+```
+/get_releases start_date:2024-12-20 end_date:2024-12-25
 ```
 
 **Manually trigger today's posts:**
