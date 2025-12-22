@@ -20,6 +20,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("lnrelease.bot")
 
+SCRAPE_INTERVAL_HOURS = float(os.getenv("BOT_SCRAPE_INTERVAL_HOURS", "8"))
+DEFAULT_TIMEZONE = os.getenv("BOT_TIMEZONE_DEFAULT", "UTC")
+
 bot_instance = None
 
 
@@ -44,6 +47,8 @@ class ReleaseBot(discord.Client):
         await self.tree.sync()
         logger.info("Commands synced")
 
+        self.update_loop.change_interval(hours=SCRAPE_INTERVAL_HOURS)
+        logger.info(f"Scrape interval set to {SCRAPE_INTERVAL_HOURS} hours")
         self.update_loop.start()
 
     async def on_ready(self):
@@ -83,6 +88,11 @@ class ReleaseBot(discord.Client):
 
     async def post_todays_releases(self):
         configs = await self.storage.get_all_guild_configs()
+        logger.info(f"Found {len(configs)} guild config(s)")
+
+        if not configs:
+            logger.warning("No guilds configured. Use /set_channel to configure a channel.")
+            return
 
         for guild_id, channel_id, timezone in configs:
             try:
@@ -95,8 +105,10 @@ class ReleaseBot(discord.Client):
 
         tz = zoneinfo.ZoneInfo(timezone)
         today = datetime.datetime.now(tz).date()
+        logger.info(f"Checking releases for guild {guild_id}, date {today} (timezone: {timezone})")
 
         releases = get_digital_releases_for_date(today)
+        logger.info(f"Found {len(releases)} digital release(s) for {today}")
 
         channel = self.get_channel(channel_id)
         if not channel:
@@ -165,10 +177,10 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
             "This command can only be used in a server.", ephemeral=True
         )
         return
-    timezone = os.getenv("BOT_TIMEZONE_DEFAULT", "UTC")
-    await bot.storage.set_channel(interaction.guild_id, channel.id, timezone)
+    await bot.storage.set_channel(interaction.guild_id, channel.id, DEFAULT_TIMEZONE)
     await interaction.response.send_message(
-        f"Release notifications will be sent to {channel.mention}", ephemeral=True
+        f"Release notifications will be sent to {channel.mention} (timezone: {DEFAULT_TIMEZONE})",
+        ephemeral=True,
     )
     logger.info(f"Guild {interaction.guild_id} set channel to {channel.id}")
 

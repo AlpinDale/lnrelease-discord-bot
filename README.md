@@ -148,6 +148,7 @@ A Discord bot that automatically posts daily alerts for licensed light novel dig
 | `DISCORD_TOKEN` | *(required)* | Your Discord bot token |
 | `BOT_DB_PATH` | `./data/bot.sqlite` | Path to SQLite database file |
 | `BOT_TIMEZONE_DEFAULT` | `UTC` | Default timezone for date calculations |
+| `BOT_SCRAPE_INTERVAL_HOURS` | `8` | Hours between scrape cycles (can be decimal, e.g., `0.5` for 30 minutes) |
 
 ### Timezone Options
 
@@ -205,6 +206,7 @@ The bot scrapes from official sources including:
    ```bash
    export DISCORD_TOKEN="your_token_here"
    export BOT_TIMEZONE_DEFAULT="UTC"
+   export BOT_SCRAPE_INTERVAL_HOURS="8"
    ```
 
 3. **Run the bot**
@@ -214,10 +216,14 @@ The bot scrapes from official sources including:
 
 ### Modifying Update Interval
 
-Edit `lnrelease/bot/app.py` and change:
-```python
-@tasks.loop(hours=8)  # Change this value
-async def update_loop(self):
+Set the `BOT_SCRAPE_INTERVAL_HOURS` environment variable:
+```bash
+export BOT_SCRAPE_INTERVAL_HOURS="12"  # Scrape every 12 hours
+```
+
+Or in your `.env` file:
+```env
+BOT_SCRAPE_INTERVAL_HOURS=4
 ```
 
 ## Troubleshooting
