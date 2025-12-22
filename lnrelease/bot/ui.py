@@ -102,7 +102,7 @@ class PaginatedReleasesView(discord.ui.View):
     async def on_timeout(self):
         for item in self.children:
             if isinstance(item, discord.ui.Button):
-                item.disabled = True
+                item.disabled = True  # type: ignore[assignment]
         if self.message:
             try:
                 await self.message.edit(view=self)

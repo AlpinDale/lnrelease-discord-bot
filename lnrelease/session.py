@@ -132,7 +132,7 @@ class Session(requests.Session):
         self,
         total: int = 5,
         backoff_factor: float = 2,
-        status_forcelist: set[int] = None,
+        status_forcelist: set[int] | None = None,
     ) -> None:
         if status_forcelist is None:
             status_forcelist = {429, 500, 502, 503, 504}

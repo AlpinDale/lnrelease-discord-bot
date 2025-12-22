@@ -153,13 +153,15 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
                     for inf in res[1]:
                         key = inf.link, inf.format
                         if inf.source != NAME:
-                            key = Key(inf.link, inf.date)
-                            pages.discard(key)
-                            pages.add(key)
+                            key_obj = Key(inf.link, inf.date)
+                            pages.discard(key_obj)
+                            pages.add(key_obj)
                         elif key in items:
                             inf.isbn = items[key].isbn
                             inf.date = items[key].date
-                        items[key] = inf
+                            items[key] = inf
+                        else:
+                            items[key] = inf
 
             except Exception as e:
                 warnings.warn(f"({link}): {e}", RuntimeWarning, stacklevel=2)
