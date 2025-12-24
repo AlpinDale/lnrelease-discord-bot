@@ -316,19 +316,24 @@ async def resync_today(interaction: discord.Interaction):
 
 @bot.tree.command(name="search", description="Search for a series and optionally filter by volume")
 @app_commands.describe(
-    series="Series name to search for",
+    series="Series name to search for (can include volume, e.g., 'Black Summoner Volume 2')",
     volume="Volume number to filter by (optional, e.g., '1', 'Vol. 1', 'Volume 1')",
 )
 async def search(interaction: discord.Interaction, series: str, volume: str | None = None):
     await interaction.response.defer(ephemeral=True)
 
     try:
-        results = searcher.search(series, volume, limit=5)
+        from lnrelease.bot.search import extract_volume_from_query
+
+        query_series, extracted_volume = extract_volume_from_query(series)
+        volume_to_use = volume or extracted_volume
+
+        results = searcher.search(query_series, volume_to_use, limit=5)
 
         if not results:
-            volume_msg = f" with volume '{volume}'" if volume else ""
+            volume_msg = f" with volume '{volume_to_use}'" if volume_to_use else ""
             await interaction.followup.send(
-                f"No series found matching '{series}'{volume_msg}.", ephemeral=True
+                f"No series found matching '{query_series}'{volume_msg}.", ephemeral=True
             )
             return
 
@@ -358,23 +363,38 @@ async def search(interaction: discord.Interaction, series: str, volume: str | No
 
             await interaction.followup.send(embed=embed, ephemeral=True)
         else:
+            has_volume_filter = volume_to_use is not None
             embed = discord.Embed(
                 title="Multiple Results",
-                description=f"Found {len(results)} matching series. Please be more specific:",
+                description=(
+                    f"Found {len(results)} matching series."
+                    + (f" Filtered by volume '{volume_to_use}'." if has_volume_filter else "")
+                ),
                 color=discord.Color.orange(),
             )
 
             for i, result in enumerate(results[:10], 1):
                 book_count = len(result.books)
-                volume_info = (
-                    f" ({book_count} book{'s' if book_count != 1 else ''})"
-                    if book_count > 0
-                    else ""
-                )
-                match_info = f" [{result.match_type}]" if result.match_type != "exact" else ""
+                if has_volume_filter and result.books:
+                    books_preview = "\n".join(
+                        f"  • {b.format} - Vol. {b.volume} - {b.date} - [{b.publisher}]({b.link})"
+                        for b in result.books[:3]
+                    )
+                    if book_count > 3:
+                        books_preview += f"\n  *...and {book_count - 3} more*"
+                    value = books_preview or "No matching books"
+                else:
+                    volume_info = (
+                        f" ({book_count} book{'s' if book_count != 1 else ''})"
+                        if book_count > 0
+                        else " (no books)"
+                    )
+                    match_info = f" [{result.match_type}]" if result.match_type != "exact" else ""
+                    value = f"Confidence: {result.confidence:.0%}{volume_info}{match_info}"
+
                 embed.add_field(
-                    name=f"{i}. {result.series.title}{volume_info}{match_info}",
-                    value=f"Confidence: {result.confidence:.0%}",
+                    name=f"{i}. {result.series.title}",
+                    value=value,
                     inline=False,
                 )
 

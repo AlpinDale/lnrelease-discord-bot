@@ -20,6 +20,9 @@ SERIES_CSV = DATA_DIR / "series.csv"
 
 VOLUME_PATTERN = re.compile(r"(?:vol\.?|volume|v\.?|#)\s*(\d+(?:\.\d+)?(?:-\d+)?)", re.IGNORECASE)
 NUMBER_PATTERN = re.compile(r"(\d+(?:\.\d+)?(?:-\d+)?)")
+VOLUME_IN_QUERY_PATTERN = re.compile(
+    r"\b(?:vol\.?|volume|v\.?|#)\s*(\d+(?:\.\d+)?(?:-\d+)?)\b", re.IGNORECASE
+)
 
 
 @dataclass
@@ -28,6 +31,15 @@ class SearchResult:
     books: list[Book]
     confidence: float
     match_type: str
+
+
+def extract_volume_from_query(query: str) -> tuple[str, str | None]:
+    match = VOLUME_IN_QUERY_PATTERN.search(query)
+    if match:
+        volume = match.group(1)
+        query_without_volume = VOLUME_IN_QUERY_PATTERN.sub("", query).strip()
+        return query_without_volume, volume
+    return query, None
 
 
 def normalize_volume(volume: str) -> str:
