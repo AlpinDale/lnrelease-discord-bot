@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import quote
 
 import discord
 from discord import app_commands
@@ -11,6 +12,10 @@ from discord.ext import tasks
 
 import lnrelease.parse as parse
 import lnrelease.scrape as scrape
+from lnrelease.bot.nyaa_search import (
+    extract_volume_from_query,
+    search_nyaa_with_variants,
+)
 from lnrelease.bot.releases import get_digital_releases_for_date
 from lnrelease.bot.storage import BotStorage
 from lnrelease.bot.ui import PaginatedReleasesView, ReleaseView
@@ -311,6 +316,68 @@ async def resync_today(interaction: discord.Interaction):
     except Exception as e:
         logger.error(f"Error in resync_today: {e}", exc_info=True)
         await interaction.followup.send(f"Error resyncing: {e}", ephemeral=True)
+
+
+@bot.tree.command(
+    name="nyaa",
+    description="Search nyaa.si for torrents in Literature - English-translated category",
+)
+@app_commands.describe(
+    query="Series name and volume (e.g., 'Black Summoner Volume 2' or 'Overlord v5')"
+)
+async def nyaa_search(interaction: discord.Interaction, query: str):
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        series_query, volume = extract_volume_from_query(query)
+
+        results = search_nyaa_with_variants(
+            series_query, volume=volume, category="3_1", max_results=10, filter_epub_only=True
+        )
+
+        if not results:
+            await interaction.followup.send(
+                f"No torrents found for '{query}' in Literature - English-translated category.",
+                ephemeral=True,
+            )
+            return
+
+        search_query_display = f"{series_query} {volume}" if volume else series_query
+        embed = discord.Embed(
+            title=f"Search Results: {query}",
+            description=f"Found {len(results)} result{'s' if len(results) != 1 else ''}",
+            color=discord.Color.blue(),
+            url=f"https://nyaa.si/?q={quote(search_query_display)}&c=3_1",
+        )
+
+        for i, torrent in enumerate(results[:10], 1):
+            value_parts = [
+                f"**Size:** {torrent.size}",
+                f"**Seeders:** {torrent.seeders} | **Leechers:** {torrent.leechers}",
+            ]
+
+            if torrent.date:
+                value_parts.append(f"**Date:** {torrent.date.strftime('%Y-%m-%d')}")
+
+            value_parts.append(f"[View on Nyaa](https://nyaa.si/view/{torrent.id})")
+
+            if torrent.magnet:
+                value_parts.append(f"[Magnet Link]({torrent.magnet})")
+
+            embed.add_field(
+                name=f"{i}. {torrent.name[:256]}",
+                value="\n".join(value_parts),
+                inline=False,
+            )
+
+        if len(results) == 10:
+            embed.set_footer(text="Showing first 10 results")
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    except Exception as e:
+        logger.error(f"Error in nyaa_search: {e}", exc_info=True)
+        await interaction.followup.send(f"Error searching nyaa.si: {e}", ephemeral=True)
 
 
 def main():

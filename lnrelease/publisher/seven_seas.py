@@ -111,8 +111,8 @@ def parse(
             if digital := digitals.get(key):
                 digital.isbn = digital.isbn or physical.isbn
 
-    books_with_none: dict[str, list[Book | None]] = {
-        k: [b for b in v] for k, v in books.items()
-    }
+    books_with_none: dict[str, list[Book | None]] = cast(
+        dict[str, list[Book | None]], {k: list(v) for k, v in books.items()}
+    )
     check(series, info, books_with_none)
     return {k: [b for b in v if b is not None] for k, v in books.items()}
