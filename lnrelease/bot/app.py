@@ -12,7 +12,6 @@ from discord.ext import tasks
 import lnrelease.parse as parse
 import lnrelease.scrape as scrape
 from lnrelease.bot.releases import get_digital_releases_for_date
-from lnrelease.bot.search import searcher
 from lnrelease.bot.storage import BotStorage
 from lnrelease.bot.ui import PaginatedReleasesView, ReleaseView
 
@@ -312,77 +311,6 @@ async def resync_today(interaction: discord.Interaction):
     except Exception as e:
         logger.error(f"Error in resync_today: {e}", exc_info=True)
         await interaction.followup.send(f"Error resyncing: {e}", ephemeral=True)
-
-
-@bot.tree.command(name="search", description="Search for a series and optionally filter by volume")
-@app_commands.describe(
-    series="Series name to search for",
-    volume="Volume number to filter by (optional, e.g., '1', 'Vol. 1', 'Volume 1')",
-)
-async def search(interaction: discord.Interaction, series: str, volume: str | None = None):
-    await interaction.response.defer(ephemeral=True)
-
-    try:
-        results = searcher.search(series, volume, limit=5)
-
-        if not results:
-            volume_msg = f" with volume '{volume}'" if volume else ""
-            await interaction.followup.send(
-                f"No series found matching '{series}'{volume_msg}.", ephemeral=True
-            )
-            return
-
-        if len(results) == 1:
-            result = results[0]
-            embed = discord.Embed(
-                title=result.series.title,
-                description=f"**Match Type:** {result.match_type.title()}\n**Confidence:** {result.confidence:.0%}",
-                color=discord.Color.blue(),
-            )
-
-            if result.books:
-                books_by_format: dict[str, list] = {}
-                for book in result.books:
-                    books_by_format.setdefault(book.format, []).append(book)
-
-                for fmt, books in sorted(books_by_format.items()):
-                    book_list = "\n".join(
-                        f"• Vol. {b.volume} - {b.date} - [{b.publisher}]({b.link})"
-                        for b in books[:10]
-                    )
-                    if len(books) > 10:
-                        book_list += f"\n*...and {len(books) - 10} more*"
-                    embed.add_field(name=fmt, value=book_list or "No books", inline=False)
-            else:
-                embed.add_field(name="Books", value="No books found", inline=False)
-
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        else:
-            embed = discord.Embed(
-                title="Multiple Results",
-                description=f"Found {len(results)} matching series. Please be more specific:",
-                color=discord.Color.orange(),
-            )
-
-            for i, result in enumerate(results[:10], 1):
-                book_count = len(result.books)
-                volume_info = (
-                    f" ({book_count} book{'s' if book_count != 1 else ''})"
-                    if book_count > 0
-                    else ""
-                )
-                match_info = f" [{result.match_type}]" if result.match_type != "exact" else ""
-                embed.add_field(
-                    name=f"{i}. {result.series.title}{volume_info}{match_info}",
-                    value=f"Confidence: {result.confidence:.0%}",
-                    inline=False,
-                )
-
-            await interaction.followup.send(embed=embed, ephemeral=True)
-
-    except Exception as e:
-        logger.error(f"Error in search: {e}", exc_info=True)
-        await interaction.followup.send(f"Error searching: {e}", ephemeral=True)
 
 
 def main():
