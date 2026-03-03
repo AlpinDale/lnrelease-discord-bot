@@ -192,7 +192,9 @@ def search_nyaa(
         timestamp_attr = cells[4].get("data-timestamp")
         date = None
         if timestamp_attr:
-            timestamp_str = str(timestamp_attr) if not isinstance(timestamp_attr, str) else timestamp_attr
+            timestamp_str = (
+                str(timestamp_attr) if not isinstance(timestamp_attr, str) else timestamp_attr
+            )
             date = datetime.fromtimestamp(int(timestamp_str))
 
         seeders = int(cells[5].get_text(strip=True) or 0)
