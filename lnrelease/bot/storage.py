@@ -117,6 +117,24 @@ class BotStorage:
             ) as cursor:
                 return await cursor.fetchone() is not None
 
+    async def is_release_sent_by_content(
+        self, guild_id: int, title: str, publisher: str, volume: str
+    ) -> bool:
+        """Secondary duplicate check by content (title/publisher/volume).
+
+        Catches duplicates even when release_id changes due to date shifts
+        or other metadata changes in source data.
+        """
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute(
+                """
+                SELECT 1 FROM release_state
+                WHERE guild_id = ? AND title = ? AND publisher = ? AND volume = ?
+            """,
+                (guild_id, title, publisher, volume),
+            ) as cursor:
+                return await cursor.fetchone() is not None
+
     async def mark_done(self, guild_id: int, release_id: str):
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(

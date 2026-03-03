@@ -133,6 +133,16 @@ class ReleaseBot(discord.Client):
             if await self.storage.is_release_sent(guild_id, release.release_id):
                 continue
 
+            # Secondary check: catch duplicates even if release_id changed
+            # (e.g., due to date shift in source data after bot restart)
+            if await self.storage.is_release_sent_by_content(
+                guild_id, release.name, release.publisher, release.volume
+            ):
+                logger.info(
+                    f"Skipping duplicate (content match): {release.name} vol {release.volume}"
+                )
+                continue
+
             embed = discord.Embed(
                 title=release.name,
                 url=release.link,
