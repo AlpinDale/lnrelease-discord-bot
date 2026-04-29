@@ -197,7 +197,13 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
             page = session.get(url, params=params, **kwargs)
             if not page:
                 break
-            jsn = page.json()
+            if page.status_code != 200:
+                break
+            try:
+                jsn = page.json()
+            except ValueError as e:
+                warnings.warn(f"Invalid Seven Seas API response: {e}", RuntimeWarning, stacklevel=2)
+                break
             for serie in jsn:
                 link = serie["link"]
                 title = unescape(serie["title"]["rendered"])
@@ -208,7 +214,7 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
             params["page"] = str(int(params["page"]) + 1)
 
         page = session.get("https://sevenseasentertainment.com/series-list/", **kwargs)
-        if not page:
+        if not page or page.status_code != 200:
             return series, info
         soup = BeautifulSoup(page.content, "lxml")
         lst = soup.select("tr#volumes > td:first-child > a")

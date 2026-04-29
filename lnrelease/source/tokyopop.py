@@ -63,7 +63,11 @@ def scrape_full(
                 break
             soup = BeautifulSoup(page.content, "lxml")
 
-            results = soup.find(id="CollectionAjaxContent").find_all(
+            collection = soup.find(id="CollectionAjaxContent")
+            if not collection:
+                warnings.warn(f"No TOKYOPOP collection found: {page.url}", RuntimeWarning, stacklevel=2)
+                break
+            results = collection.find_all(
                 "a", href=lambda x: x and x.startswith("/collections/novels/products/")
             )
             for a in results:
