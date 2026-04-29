@@ -14,6 +14,10 @@ NAME = "Yen Press"
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
 PAGES = DATA_DIR / "yen_press.csv"
 
+REFRESH_PAST_DAYS = 60
+REFRESH_FUTURE_DAYS = 120
+STALE_REFRESH_RATE = 0.02
+
 TITLES = re.compile(
     r"https://yenpress\.com/titles/\d{13}-(?!.*(manga-vol|vol-\d+-manga|vol-\d+-comic|-chapter-\d+))[\w-]+"
 )
@@ -26,6 +30,18 @@ START = re.compile(
     r"(?P<start>.+?) (?:omnibus |collector\'s edition |volume )+\d+(?: \(light novel\))?",
     flags=re.IGNORECASE,
 )
+
+
+def skip_cached_page(row: Key, today: datetime.date) -> bool:
+    if not row.date:
+        return random() >= STALE_REFRESH_RATE
+
+    refresh_start = today - datetime.timedelta(days=REFRESH_PAST_DAYS)
+    refresh_end = today + datetime.timedelta(days=REFRESH_FUTURE_DAYS)
+    if refresh_start <= row.date <= refresh_end:
+        return False
+
+    return random() >= STALE_REFRESH_RATE
 
 
 def parse(session: Session, link: str, links: dict[str, str]) -> None | tuple[Series, set[Info]]:
@@ -99,13 +115,7 @@ def parse(session: Session, link: str, links: dict[str, str]) -> None | tuple[Se
 def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[Info]]:
     pages = Table(PAGES, Key)
     today = datetime.date.today()
-    cutoff = today - datetime.timedelta(days=180)
-    # no date = not light novel
-    skip = {
-        row.key
-        for row in pages
-        if isinstance(row, Key) and random() > 0.2 and (not row.date or row.date < cutoff)
-    }
+    skip = {row.key for row in pages if isinstance(row, Key) and skip_cached_page(row, today)}
 
     isbns: dict[str, Info] = {inf.isbn: inf for inf in info}
 

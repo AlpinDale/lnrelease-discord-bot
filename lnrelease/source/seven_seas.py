@@ -18,6 +18,10 @@ OMNIBUS = re.compile(
 NON_FORMATS = ("Manga", "Novel")
 FORMATS = ("Light Novel", "Reference Guide")
 DATES = (r"%b %d, %Y", r"%Y-%m-%d", r"%B %d, %Y", r"%Y/%m/%d")
+RECENT_MODIFIED_DAYS = 30
+ACTIVE_RELEASE_PAST_DAYS = 60
+OLD_API_REFRESH_RATE = 0.1
+OLD_LIST_REFRESH_RATE = 0.2
 
 
 def strpdate(s: str) -> datetime.date:
@@ -27,6 +31,32 @@ def strpdate(s: str) -> datetime.date:
         except ValueError:
             pass
     raise ValueError(f"Invalid time data '{s}'")
+
+
+def should_refresh_series(
+    previous: set[Info], modified: datetime.date, today: datetime.date
+) -> tuple[bool, int]:
+    if modified == datetime.date(1, 1, 1):
+        if not previous:
+            return True, 4
+
+        old = (today - max(i.date for i in previous)).days > 365
+        if old:
+            return random() <= OLD_LIST_REFRESH_RATE, 10
+        return True, 4
+
+    days = (today - modified).days
+    if days < 2:
+        return True, 0
+    if days < RECENT_MODIFIED_DAYS:
+        return True, 4
+
+    if previous and max(i.date for i in previous) >= today - datetime.timedelta(
+        days=ACTIVE_RELEASE_PAST_DAYS
+    ):
+        return True, 10
+
+    return random() <= OLD_API_REFRESH_RATE, 10
 
 
 def parse(session: Session, link: str, series: Series, refresh: int) -> set[Info]:
@@ -198,22 +228,10 @@ def scrape_full(series: set[Series], info: set[Info]) -> tuple[set[Series], set[
         for link, (title, modified) in links.items():
             try:
                 serie = Series("", title)
-                if modified == datetime.date(1, 1, 1):
-                    prev = {i for i in info if i.serieskey == serie.key}
-                    old = bool(prev) and (today - max(i.date for i in prev)).days > 365
-                    if old and random() > 0.2:
-                        continue
-                    refresh = 10 if old else 4
-                else:
-                    days = (today - modified).days
-                    if days < 2:
-                        refresh = 0
-                    elif days < 30:
-                        refresh = 4
-                    elif random() > 0.1:
-                        continue
-                    else:
-                        refresh = 10
+                prev = {i for i in info if i.serieskey == serie.key}
+                should_refresh, refresh = should_refresh_series(prev, modified, today)
+                if not should_refresh:
+                    continue
 
                 if inf := parse(session, link, serie, refresh):
                     series.add(serie)
